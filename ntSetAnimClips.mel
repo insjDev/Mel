@@ -1,0 +1,93 @@
+/*
+ntSetAnimClips v0.2 
+
+update -- 2016-01-13  
+update -- 2016-06-13 auto open game exporter and add clip ;check chapter time range ; clear old clips first then reset
+update -- 2016-09-21 update current anim clip preset than delete 
+update -- 2017-03-19 if Chapter has no child node than create a Chapter1 as default 
+update -- 2017-08-11 fix value type error in maya ver2017
+//directions:
+1.create animation clips via chapter
+2.Please make sure Chapter is a null obj 
+
+*/
+
+global proc ntSetAnimClips()
+{
+    
+	if(`objExists Chapter`==0)
+	{
+	    window -t "Error!" -w 200 errWin ;
+	    columnLayout -adj true;  
+	    text -l "";
+	    text -l ("Please create your \"Chapter\" first !" );
+	    text -l "";
+	    showWindow;
+	}
+	string $clips[] =`listRelatives -c Chapter`;//list all chapter children 
+	if(`size ($clips)`==0)
+	{
+		select -cl;
+		doGroup 0 1 1 ;
+		rename `ls -sl` Chapter1;
+		parent Chapter1 Chapter;
+		setAttr  Chapter1.ty  1;
+	}
+	/*for ($i=0; $i < `size $clips`; $i++)//loop though it
+	{
+	    //check chapter time range
+	     float $px[]=`getAttr ($clips[$i]+".tx")`;
+	     float $py[]=`getAttr ($clips[$i]+".ty")`;
+	    if ($px[$i]>=$py[$i])
+	    {
+	        window -t "Error!" -w 200 errWin ;
+	        columnLayout -adj true;  
+	        text -l "";
+	        text -l ("The time range of \""+ $clips[$i]+"\" is wrong !" );
+	        text -l "";
+	        showWindow;
+	        break; 
+	    }
+	}*/
+	if (!`window -q -exists errWin`)//if no chapter time range is wrong
+	{
+	    ntSetAnimClipViaChapter;
+	}
+}ntSetAnimClips;
+	
+//
+global proc ntSetAnimClipViaChapter()
+{ 
+    //open game exporter and set to anim clip tab
+    gameFbxExporter;
+    gameExp_ChangeExportType(2);   
+    gameExp_PopulatePresetList();
+    gameExp_CreateExportTypeUIComponents();  
+    //gameExp_DeletePreset;//del old clips
+    global string $gGameFbxExporterCurrentNode;//get the current gameExporter Node 
+    int $currentClipSize = `getAttr -size ($gGameFbxExporterCurrentNode + ".animClips")`;//get current clips amounts
+    if($currentClipSize > 0 )
+    {
+        for ($k=$currentClipSize;$k>0;$k--)
+        {gameExp_DeleteAnimationClipLayout $k;}
+    }
+   
+    string $clips[] =`listRelatives -c Chapter`;//list all chapter children 
+    for ($i=0; $i < `size $clips`; $i++)//loop though it
+	{
+	    global string $gGameFbxExporterCurrentNode;//get the current gameExporter Node 
+	   
+		setAttr ($gGameFbxExporterCurrentNode + ".animClips[" + ($i) + "].animClipName") -typ "string" $clips[$i];//set the name of the clip
+	      $StartTime = `getAttr ($clips[$i]+".translateX")`;//get clip tx as start time
+	       
+	 
+	    $EndTime= `getAttr ($clips[$i] +".translateY")`;//get clip ty as end time
+	 
+	    setAttr ($gGameFbxExporterCurrentNode + ".animClips[" + ($i) + "].animClipStart") $StartTime[0] ;//set start frame of the clip
+	    setAttr ($gGameFbxExporterCurrentNode + ".animClips[" + ($i)+ "].animClipEnd")  $EndTime[0] ;//set end frame of the clip
+	    // Refresh the clip list
+	   $gameFbxExporterScrollLayout = gameExp_GetPrefixedName("gameFbxExporterScrollLayout");
+		gameExp_CreateScrollAnimationClipLayout();
+	}
+	
+}

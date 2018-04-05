@@ -1,0 +1,74 @@
+/*
+ntAlign v0.2
+
+
+update -- 2017-05-19  
+update -- 2017-10-12 add align pivot
+
+//directions:
+1.select children first then parent
+2.click ctrl +shift+ left mouse button to open menu
+
+*/
+global proc ntAlign()
+{
+	if ( `popupMenu -exists ntAlignMenu` )
+	{ deleteUI ntAlignMenu;}
+	popupMenu -mm 1 -sh 1 -ctl true -button 2 -p viewPanes -pmc "string $sel[] = `ls -sl`; int $size = `size($sel)`; float $parentPos[3] = `xform -q -ws -rp $sel[($size-1)]`; float $parentRot[3] = `xform -q -ws -ro $sel[($size-1)]`;float $parentSca[3] = `xform -q -r -s $sel[($size-1)]`;float $ParentPivot[3]=`xform -q -ws -piv $sel[($size-1)]`;" ntAlignMenu;
+		menuItem -label "Translation" -enable 1 -command "alignTrans;" menuItem1;
+	    menuItem -label "Rotation" -enable 1 -command "alignRot;" menuItem2;
+	    menuItem -label "Scale"  -enable 1 -command "alignSca;" menuItem3;
+	     
+	    menuItem -label "separator" -divider 1 menuItem4;
+	    menuItem -label "ALL" -enable 1 -boldFont 1 -command "alignTrans;alignRot;alignSca;" menuItem5;
+	    menuItem -label "separator" -divider 1 menuItem6;
+	    menuItem -label "Pivot" -enable 1 -boldFont 1 -command "alignPivot;" menuItem7;
+		setParent -m ..;
+
+}ntAlign;
+
+//Align Trans
+global proc alignTrans() 
+{
+    global string $sel[];
+    global int $size;
+	global float $parentPos[3];
+    for ($i = 0; $i < ($size-1); $i++)
+    {move -ws -rpr $parentPos[0] $parentPos[1] $parentPos[2] $sel[$i];}
+};
+
+//Align Rotate
+global proc alignRot() 
+{
+    global string $sel[];
+    global int $size;
+    global float $parentRot[3];
+	for ($i = 0; $i < ($size-1); $i++)
+	{xform -ws -ro $parentRot[0] $parentRot[1] $parentRot[2] $sel[$i];}
+};
+
+//Align Sca
+global proc alignSca() 
+{
+    global string $sel[];
+    global int $size;
+    global float $parentSca[3];
+	for ($i = 0; $i < ($size-1); $i++)
+	{
+		setAttr ($sel[$i] + ".scaleX") $parentSca[0];
+		setAttr ($sel[$i] + ".scaleY") $parentSca[1];
+		setAttr ($sel[$i] + ".scaleZ") $parentSca[2];
+	}
+};
+
+//Align Pivot
+global proc alignPivot() 
+{
+	global string $sel[];
+    global int $size;
+    global float $ParentPivot[3];
+    for ($i = 0; $i < ($size-1); $i++)
+	{
+		xform -ws -piv $ParentPivot[0] $ParentPivot[1] $ParentPivot[2] $sel[$i];
+    }
+};

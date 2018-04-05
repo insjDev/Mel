@@ -1,0 +1,18 @@
+/*
+ntSelCrvOnly v0.1
+
+update -- 2017-05-05
+
+//directions:
+1.set selection mask to only crv on
+
+*/
+	
+string $masks[]={"Marker","Joint","Surface","Deformer","Dynamic","Rendering","Other"};
+for ($mask in $masks)
+{setObjectPickMask $mask false;}
+updateObjectSelectionMasks;
+updateComponentSelectionMasks;
+dR_selTypeChanged("");
+
+

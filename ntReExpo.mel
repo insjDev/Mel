@@ -1,0 +1,114 @@
+/*
+ntReExpo v0.2 
+
+
+update -- 2016-06-03
+update -- 2016-06-15 check frame rate first ; set the time range depend on the keyframe length
+	  
+
+//directions:
+*** for maya 2016
+1. ReExport the fbx that GameExporter exported to minimize the file size
+2.Put all fbx in one folder then open one and run 
+
+*/
+
+global proc ntReExportUI()
+{
+//check frame rate
+string $fpsValue =`currentUnit -q -t`;//find out the current frame rate
+string $fpstext="";
+switch($fpsValue)
+{
+    case "ntsc"://30 fps
+        $fpstext= "30fps";
+        break;
+    case "film"://30 fps
+        $fpstext= "24fps";
+        break;
+    default:
+      $fpstext=$fpsValue;
+  }      
+      
+    if (`window -q -exists bakeSelWin`)//if warning window exists, delete
+    {
+        deleteUI bakeSelWin;
+    }
+    window -t "Confirm" bakeSelWin ;
+    formLayout waitform;
+        symbolButton -image "caution.png" sym;
+        text  -l ("\n Export at "+ $fpstext) waittext;
+        button -l "Continue" -c "nt_reExport;deleteUI bakeSelWin;"-w 50 -h 30 -bgc 0.3 0.3 0.3 yesButton;
+        button -l "Set" -c " preferencesWnd \"Settings\" ;deleteUI bakeSelWin; " -w 50 -h 30 -bgc 0.3 0.3 0.3 waitButton;
+    formLayout -e
+        -af sym         top     5
+        -af sym         left    5
+       
+        -af waittext    left    25
+        -af waittext    right   5 
+         
+        -ac yesButton   top     5 waittext
+        -af yesButton   left    5
+        -ap yesButton   right   5 48
+        -af yesButton   bottom  10
+        
+        -ac waitButton  top     5 waittext
+        -ap waitButton  left    5 48
+        -af waitButton  right   5
+        -af waitButton  bottom  10
+            waitform;
+    window -e -w 200 -h 50  bakeSelWin ;
+    showWindow; 
+}ntReExportUI;
+
+//======= nt_reExport =======//
+global proc nt_reExport()
+{
+    //find file full path
+    string $path = `file -query -sceneName`;
+    //set the folder path
+    string $dirname = (dirname($path))+"/";
+    //get all the file names in the folder 
+    string $files[]=`getFileList -fld $dirname -fs "*.fbx"`;
+    //get file amount
+    $sizeFiles=`size ($files)`;
+    //open each one and reExport
+    int $k;
+    for ($k=0;$k<$sizeFiles;$k++)
+        { 
+            //open the file
+            file -f -options "fbx"  -typ "FBX" -o $files[$k];addRecentFile($files[$k], "FBX");
+            //find the keyframe range
+            select -all;
+            $firstFps =`findKeyframe  -which first`;
+            $lastFps  =`findKeyframe  -which last`;
+            
+            //set time range to max
+            playbackOptions -min $firstFps -max $lastFps ;
+            select -cl;
+    	    //get the file name
+    	    string $pathsave = `file -query -sceneName`;	
+    	    //export	   
+    		file -force -options "fbx" -type "FBX export" -pr -ea ($pathsave);
+    	}
+    	//deleteUI nt_playblastToolUI;
+              window -t "" playblastReportWin ;//create check window
+                
+                    formLayout waitform;
+                    
+                        text   -l "\n Done ! \n" waittext;
+                        button -l "Close" -c "deleteUI playblastReportWin;"-w 50 -h 30 -bgc 0.3 0.3 0.3 waitButton;
+                
+                    formLayout -e
+                               -af waittext    top     5
+                               -af waittext    left    5
+                               -af waittext    right   5 
+                                
+                               -ac waitButton  top     5 waittext
+                               -af waitButton  left    40
+                               -af waitButton  right   40
+                               -af waitButton  bottom  10
+                           waitform;
+                 window -e -w 200 -h 50  playblastReportWin; //reload window
+                 showWindow playblastReportWin;   
+}

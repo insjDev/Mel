@@ -1,0 +1,49 @@
+global proc ntSvgImporterUI()
+{
+    if (`window -ex nt_batchRenderToolUI `)
+    deleteUI nt_batchRenderToolUI;
+    window -t "ntSvgImporter"  nt_batchRenderToolUI ;
+        frameLayout -lv 1 -l "Choose SVG Folder  :"  chooseframe ;
+            textFieldButtonGrp -l "Path : " -text (`workspace -q -fn` +"/images/") //default set to project's images folder 
+                               -bl "Browse" -bc "getPath" -cw3  40 300 40 
+                               MySvgPath;
+            button -l "Import" -c "ntSvgImporter";
+    window -e -w 300 -h 80  nt_batchRenderToolUI ;
+    showWindow nt_batchRenderToolUI;
+}ntSvgImporterUI;
+// --------------set and get path -------------- 
+global proc getPath()
+{
+        global string $rvbr_pathNameCont;
+        fileBrowserDialog -m 4 -fc setPath -an "select path";
+        textFieldButtonGrp -e -tx ($rvbr_pathNameCont +"/") MySvgPath;
+}
+
+global proc setPath (string $vbr_name , string $fileType )
+{
+        global string $rvbr_pathNameCont; 
+        $rvbr_pathNameCont = $vbr_name ;
+}
+//-------
+global proc ntSvgImporter()
+{        
+    //get all the file names in the folder 
+    string $svgPath = `textFieldButtonGrp -q -tx MySvgPath`; // get textfield path
+    string $files[]=`getFileList -fld $svgPath -fs "*.svg"`;
+    for ($file in $files)
+    {
+        string $baseName= basename($file,".svg");
+        createSVGCallback();
+        $sel=`ls  -sl`;
+        $geo =`listRelatives -p $sel`;
+        $svg=`listConnections $geo`;
+       
+        $svgExt=`listConnections -d 1 ($svg[0]+".outputMesh")`;
+        //print $svgExt?
+        setAttr ($svg[0]+".svgMode") 1;
+        setAttr -type "string" ($svg[0]+".svgFilepath") ($svgPath+$file);
+        setAttr ($svgExt[0]+".enableExtrusion") 0;
+        setAttr ($svg[0]+".curveResolution") 10;
+    }
+  
+};

@@ -1,0 +1,226 @@
+/*
+ntNaming v0.2 
+
+update -- 2016-12-06 
+update -- 2017-06-14  add dummy node to keep track of the selection,so maya won't confuse when parent obj's name changed
+
+//directions:
+1.use hashes to rename selected orderly
+2.search and replace strings of the selected also can duplicate the grp you selected and search replace all its children
+3.add prefix or suffix
+
+*/
+global proc ntNamingUI()
+{
+	if (`window -ex ntNamingToolUI `)
+	{deleteUI ntNamingToolUI;}
+	window -t "ntNaming"  ntNamingToolUI ;
+		frameLayout    -l "Hash Rename : "   nameingframe ;
+		    separator -st none;  
+		    text  -l " Example :              Name_####_aa    \n         // Result :              Name_0001_aa          ";
+		    textFieldButtonGrp  -l "New Name :" -cw3 75 120 10 -bl ">>>" -bc "ntHashRename"  newHashName;
+		   
+		frameLayout    -l "Search : "   nameingframe ;
+		    textFieldGrp -l "Search For :" -cw2 75 155 ntSearchT;
+		    textFieldGrp -l "Replace With :" -cc "ntDuplicateReplace" -cw2 75 155 ntReplaceT;
+		    checkBoxGrp -l "Duplicate :" -cw2 75 155 -l1 ""  dupCheck;
+		    
+		rowColumnLayout  -nc 2 -cs 1 10 -cs 2 10;
+		     button  -l "Reverse" -w 60 -c "ntSearchReplaceRev" reverseButton;
+		     button  -l   "Apply" -w 150 -c "ntDuplicateReplace" searchAppButton;
+		           setParent nameingframe;
+		   
+		frameLayout  -l "Add Prefix or Suffix : "  frefixframe;
+		     separator -st none;
+		     textFieldButtonGrp -l "Add Prefix_ : "  -bl ">>>" -bc "ntAddPrefixSuffix(1)" -cw3 75 120 10  prefixTFG;
+		     textFieldButtonGrp -l "Add _Suffix : "  -bl ">>>" -bc "ntAddPrefixSuffix(2)"  -cw3 75 120 10  suffixTFG;
+		   
+		 separator -st none;
+	
+	window -e -w 200 -h 150 ntNamingToolUI;
+	showWindow ntNamingToolUI;
+               
+}ntNamingUI;
+
+//
+global proc ntHashRename()
+{
+	string $newName= ` textFieldButtonGrp -q -tx newHashName`;//get value of the textfield
+	string $resultString ;
+	string $result;
+	string $sels[] =`ls -sl`;
+
+	// create a dummy node for keeping track of all the objects.  when we rename them, it may change the object's
+    // names, which could get confusing for maya.
+    $node = `createNode unknown`;
+    addAttr -ln "selObjects" -at message -multi -im 0;
+
+    for ($obj in $sels)
+    {
+        // connect the attributes
+        connectAttr -na ($obj + ".message") ($node + ".selObjects");
+    }
+    
+    //$con = `listConnections ($node + ".selObjects")`;
+    
+    
+	string $hash = "#+";//$hash = ####.... -eg.a# and we have 11 selected
+	string $myHash = `match $hash $newName`;//check how many "#" we use -eg.=1
+	int $hashDigits = `size $myHash`;//get the number of "#" we use -eg.=1
+	string $myZero = substituteAllString($myHash, "#", "0");//replace "#" with "0" -eg.=0
+	
+	for($i=0;$i<`size $sels`;$i++)
+	{
+	    string $stringI = ($i+1);//eg.1st=1; 9th 10
+	    int $sizeI=`size $stringI`;//eg.1st=1; 9th 2
+	    string $zeroAddObjSize = ($myZero + ($i+1));//eg.1st=01; 9th=010
+		int $fullDigits =`size($zeroAddObjSize)`;//eg.1st=2; 9th=3
+	    if ($sizeI <= $hashDigits)//eg.1st true; 9th fauls so skip
+	    {
+	        $sizeI=$sizeI + 1;//eg.1st = 2
+	        $resultString = `substring $zeroAddObjSize $sizeI $fullDigits`;//eg.1st = sub 01 from 2nd letter to 2nd letter =1
+	    }
+	    
+	    string $tmp[];
+        string $tmp2[];
+        $tmp = `listConnections ($node + ".selObjects["+$i+"]")`;
+        tokenize ($tmp[0], "|", $tmp2);
+        string $shortName = $tmp2[(size($tmp2)-1)];
+        string $object = $tmp[0];
+        
+	    string $result = `substitute $myHash $newName $resultString`;//eg.1st=a1; 9th=a10
+	    rename $object $result;
+	}    
+}
+
+//
+global proc ntDuplicateReplace()
+{
+    string $search = ` textFieldGrp -q -tx ntSearchT `;
+	string $replace =` textFieldGrp -q -tx ntReplaceT `;
+
+	string $objs[] = `ls -sl`;
+	
+	if (`size $objs` >0)
+	{
+		// create a dummy node for keeping track of all the objects.  when we rename them, it may change the object's long
+        // names, which could get confusing for maya.
+        $node = `createNode unknown`;
+        addAttr  -ln "selObjects" -at message -multi -im 0;
+        
+        for ($obj in $objs)
+        {
+            // connect the attributes
+            connectAttr -na ($obj + ".message") ($node + ".selObjects");
+        }
+        
+		 $con = `listConnections ($node + ".selObjects")`;
+       
+        for ($x = 0; $x < size($con); $x++)
+        {
+            string $tmp[0];
+            string $tmp2[0];
+            $tmp = `listConnections ($node + ".selObjects["+$x+"]")`;
+            tokenize ($tmp[0], "|", $tmp2);
+            string $shortName = $tmp2[(size($tmp2)-1)];
+            string $object = $tmp[0];
+        
+            // replace the $searchString with $replaceString in $shortName
+            $newName = `substitute $search $shortName $replace`;
+
+            // rename the object
+            $result = `rename $object $newName`;
+            
+            print ("// Renamed: " + $object + " --> " + $result + "\n");
+        } 
+        $objs = `listConnections ($node + ".selObjects")`;
+        delete $node;
+		
+		if(`checkBoxGrp -q -v1 dupCheck` == 1)//if need duplicate 
+		{
+			// duplicate the objects
+            $duplicated = `duplicate -rr $objs`;
+
+            string $newObj[0];
+            // the $duplicated objects are the original ones.  We want to rename those the same as the orig, except with the new names.
+            for ($x = 0; $x < size($duplicated); $x++)
+            {
+                $newName = `substitute $search $objs[$x] $replace`;
+                $newObj[$x] = `rename $duplicated[$x] $newName`;
+            }
+
+            // now we gotta get all the children of the duplicated object and pass those through
+            $objs = `listRelatives -f -ad $newObj`;
+		}
+		
+	}
+}
+
+//
+global proc ntAddPrefixSuffix(int $mode)
+{
+    string $prefix = ` textFieldGrp -q -tx prefixTFG `;
+	string $suffix =` textFieldGrp -q -tx suffixTFG `;
+	
+	string $objBaseName;
+	string $duplicated[];
+	string $newObj[];
+	string $myName[];
+	
+	string $objs[] = `ls -sl`;
+	if (`size $objs` >0)
+	{
+		for ($i=0;$i<`size($objs)`; $i++)
+		{
+			$objBaseName =`ntGetBaseName($objs[$i])`;
+			switch ($mode)
+		    {
+			    case 1:
+			        if ($prefix == "")
+		            {
+			            warning -sl 0 ("Can't add prefix, prefix entry field is blank!");
+			            return;
+		    	    }
+			        $newShortName = ($prefix + $objBaseName);
+			        break;
+		
+			    case 2:
+			        if ($suffix == "")
+			        {
+			            warning -sl 0 ("Can't add suffix, suffix entry field is blank!");
+			            return;
+			    	}
+			        $newShortName = ($objBaseName + $suffix);
+			        break;
+			}
+			rename $objs[$i] $newShortName;
+		}
+    }
+}
+
+//
+global proc string ntGetBaseName( string $obj)
+{
+	gmatch $obj "|" ;
+    string $buffer[] ;
+    tokenize $obj "|" $buffer ;
+    string $newName = $buffer[size($buffer)-1] ;
+    
+    return $newName;
+}
+
+
+//
+global proc ntSearchReplaceRev()
+{
+    string $search = `textFieldGrp -q -tx ntSearchT`;
+	string $replace = `textFieldGrp -q -tx ntReplaceT`; 
+	textFieldGrp -e -tx $replace ntSearchT;
+	textFieldGrp -e -tx $search ntReplaceT; 
+} 
+
+
+
+
+
+

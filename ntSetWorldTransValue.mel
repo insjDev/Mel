@@ -1,0 +1,40 @@
+/*
+ntSetWorldTransValue v0.1
+
+
+update -- 2016-11-18
+
+//directions:
+1.reset selected obj transform value to world axis value
+
+*/
+
+
+global proc ntSetWorldTransValue(string $sels[])
+{
+	if(`objExists "crvLoc"`)
+	{delete crvLoc;}
+
+	spaceLocator -p 0 0 0 -n crvLoc;
+	
+	for ($sel in $sels)
+	{	
+		$topParent = `rootOf $sel`;
+	    $objTrans  = `xform -q -ws -rp $sel`;
+	    $objRotate = `xform -q -ws -ro $sel`;
+	   
+	    move  -ws -rpr $objTrans[0] $objTrans[1] $objTrans[2] crvLoc;
+		xform -ws -ro $objRotate[0] $objRotate[1] $objRotate[2] crvLoc;
+		if ($topParent!=("|"+$sel))
+		{parent crvLoc $topParent;}
+		
+		parent $sel crvLoc;
+		makeIdentity -apply true -t 1 -r 1 -s 1 -n 0 -pn 1 $sel;	
+		parent -w $sel;
+		delete crvLoc;
+	}
+	
+}
+//example
+string $as[] = `ls  -sl`;//..put selection in var
+ntSetWorldTransValue($as);

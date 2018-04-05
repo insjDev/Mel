@@ -1,0 +1,91 @@
+/*
+ntSetFps v0.2
+
+
+update -- 2017-01-16 
+update -- 2017-05-18   fix playback speed rate ; deselect objs after done
+
+//directions:
+1.get current frame rate
+2.toggle if keep keys at current frame
+3.set a new frame rate 
+
+*/
+
+global proc ntSetFpsUI()
+{                          
+	string $CurrentFrameRate =`currentUnit -q -t`;//get current frame rate
+	string $CurrentFpsText;//switch frame rate to string number
+	if ($CurrentFrameRate=="film")//film = 24
+	{$CurrentFpsText="24";}
+	else if ($CurrentFrameRate=="pal")//pal = 25
+	{$CurrentFpsText="25";}
+	else if ($CurrentFrameRate=="ntsc")//ntsc = 30
+	{$CurrentFpsText="30";}
+	else //other = value
+	{$CurrentFpsText=$CurrentFrameRate;}
+	
+	if (`window -ex ntSetFpsUI `)
+	{deleteUI ntSetFpsUI;}
+	window -t "ntSetFps"  ntSetFpsUI ;
+		frameLayout  -l ("Current Fps :     " + $CurrentFpsText) CurrentFps;
+		    separator -st none;
+		    checkBoxGrp  -l "" -cw2 40 80 -l1 "Keep keys at current frame" -v1 true checkBoxValue;  
+    		optionMenuGrp  -cw2 125 80   -cc "" -l "Change to  :        "  ChangeToFps;
+    			menuItem  -l "   24 fps" ;
+    			menuItem  -l "   25 fps" ;
+    			menuItem  -l "   30 fps" ;       	
+		    button  -l   "Apply" -w 100 -c "ntChangeFpsRate;ntSetFpsUI;" -al center searchAppButton;
+		           setParent CurrentFps;
+		separator -st none;
+	
+	window -e -w 240 -h 120 ntSetFpsUI;
+	showWindow ntSetFpsUI;
+               
+}ntSetFpsUI;
+
+//
+global proc ntChangeFpsRate()
+{
+    $fpsValue=`optionMenuGrp -q -v ChangeToFps`;//get option menu value
+    if ($fpsValue=="   24 fps")
+    {
+        $fbsRate="film";
+        ntPlaybackOption($fbsRate);
+    }
+    if ($fpsValue=="   25 fps")
+    {
+        $fbsRate="pal";
+        ntPlaybackOption($fbsRate);
+    }
+    if ($fpsValue=="   30 fps")
+    {
+        $fbsRate="ntsc";
+        ntPlaybackOption($fbsRate);
+    }
+}
+
+//
+global proc ntPlaybackOption(string $fbsRate)
+{
+    $ifKeep = (`checkBoxGrp -q -v1 checkBoxValue`);//get check box value
+    playbackOptions -e -playbackSpeed 1; 
+    currentUnit  -ua $ifKeep -time $fbsRate;
+    select  -all;
+    $firstFps =`findKeyframe  -which first`;
+    $lastFps  =`findKeyframe  -which last`;
+    if(($lastFps-$firstFps)>0)
+    {playbackOptions -min $firstFps -max $lastFps ;}
+    else
+    {playbackOptions -min 1 -max 24 ;}
+    currentTime 1 ;   
+    select -cl;
+}
+
+
+
+
+
+
+
+

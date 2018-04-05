@@ -1,0 +1,72 @@
+/*
+    ntAddAtlas v0.1
+    update:    2018-04-05
+    instructions:
+    //1.put your controller name in the "driver"
+    //2.put your attribute name in the "driver attr"
+    //3.set your attribute max value 
+    //4."start at" is the number you want to start with set driven key , normally match to the naming of the mesh
+    //5.select all the driven meshes by order!
+    //6.run the script
+    notice:    value 0 is to turn off all atlas visibilities,so "start at" is default set to 1
+
+*/
+
+//--UI Window
+{
+    string $win="ntAddAtlasUI";
+    if (`window -ex $win `)
+    {deleteUI$win;}
+    window -t "ntAddAtlasUI"  $win ;
+           frameLayout -lv 0 mainframe ;
+                separator;
+                textFieldGrp -l" driver"      -tx "*_ctr" -cw2 60 120 -cl2 "left" "right" driver;
+                textFieldGrp -l" driver attr" -tx "atlas"    -cw2 60 120 -cl2 "left" "right" driverAttr;
+                intSliderGrp -l" driver max"  -field on -v 10 -min 1 -max 50 -cw3 60 20 100 -cl3 "left" "left""right" maxInt;
+                intSliderGrp -l" start at"    -field on -v 1  -min 0 -max 20 -cw3 60 20 100 -cl3 "left" "left""right" startInt;
+                button  -l "Add" -c "ntAddAtlas";
+    window -e -w 250 -h 80 $win ;
+    showWindow $win;
+}
+
+//--Main Proc
+global proc ntAddAtlas()
+{
+    string $driver=    `textFieldGrp -q -tx driver`;
+    string $driverAttr=`textFieldGrp -q -tx driverAttr`;
+    int    $maxInt =   `intSliderGrp -q -v  maxInt`;
+    int    $startInt = `intSliderGrp -q -v  startInt`;
+   
+   
+    string $drivens[] =`ls -sl`;
+    int $drivensSize = `size $drivens`;
+    
+    if (`objExists  ($driver+"."+$driverAttr)`)//if attribute "atlas" already exsists
+    {addAttr -e -max $maxInt ($driver+"."+$driverAttr);}//change max value
+    else
+    {
+        addAttr -ln $driverAttr -at long  -min 0 -max $maxInt -dv 1  $driver ;
+        setAttr -keyable on ($driver+"."+$driverAttr);
+    }
+        
+    int $i;//driver attribute value
+    int $j;//driven number
+    int $value;
+    
+    for($i=($startInt);$i<($drivensSize+$startInt+2);$i++)//normally we start at $i=1, $j=0
+    {   
+        for($j=0;$j<($drivensSize);$j++)
+        {
+            if ($j == ($i-$startInt-1))//first loop, no driven number =-1 so all atlas visibilities are turn off
+            {$value=1;}
+            else
+            {$value=0;}
+            setDrivenKeyframe   
+            	-currentDriver ($driver+"."+$driverAttr)
+            	-driverValue ($i-1)
+            	-attribute  "visibility"
+            	-value ($value)
+            	($drivens[$j]); 
+        }
+    }
+} 

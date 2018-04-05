@@ -1,0 +1,28 @@
+/*
+Script Name:	ntParentExpoJntToRig
+Version:		0.0.1
+Update:			2016-02-04 
+Description:	parent for expo jnt to the rig's orignal jnt chain
+				make one parent jnt sets and one children jnt sets 
+				make sure two sets' name ande size matches
+Instruction: 	sel org jnt sets first then expo jnt sets
+*/
+
+$sels = `ls -sl`;// sel org jnt sets first then expo jnt sets
+//print $sels;
+select -r $sels[0]; //sel parent jnt sets
+$psel = `ls -sl -long`;// get all the parent jnt long name
+//print $psel;
+select -r $sels[1];//sel children jnt sets
+$csel = `ls -sl -long`;// get all the children jnt long name
+//print $csel;
+$pjnt = `sort $psel`;// sort parent jnt chain name
+$cjnt = `sort $csel`;// sort children jnt chain name
+for ($i=0;$i<`size $cjnt`;$i++)
+{
+	select -cl;
+	select -r $pjnt[$i];
+	select -add $cjnt[$i];
+	doCreateParentConstraintArgList 1 { "1","0","0","0","0","0","0","1","","1" };
+	
+}

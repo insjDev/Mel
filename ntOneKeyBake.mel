@@ -1,0 +1,237 @@
+/*
+ntOneKeyBake v1.0
+*/
+
+
+//check forBakeN sets 
+//if no "*forBakeN*" sets in the scene , pop up a warning window 
+global string $selOrg[];
+if (`objExists "*forBakeN*"`==0)
+{
+    if (`window -q -exists bakeSelCheckWin`)
+    {deleteUI bakeSelCheckWin;}
+    window -t "Warning" bakeSelCheckWin ;
+        formLayout waitform;
+            symbolButton -image "error.png" sym;
+            text  -l "\n Please create a \"forBakeN\" sets !  \n" waittext ;
+            button -l "Close" -c "deleteUI bakeSelCheckWin;"-w 50 -h 30 -bgc 0.3 0.3 0.3 waitButton;
+        formLayout -e
+            -af sym    top     5
+            -af sym    left    5
+            -af waittext    left    26
+            -af waittext    right   5 
+            -ac waitButton  top     5 waittext
+            -af waitButton  left    40
+            -af waitButton  right   40
+            -af waitButton  bottom  10
+                waitform;
+     window -e -w 200 -h 50  bakeSelCheckWin;
+     showWindow bakeSelCheckWin; 
+}
+else
+//check for selections
+//without anything selected , we bake set members 
+//if anything selected, pop up a option window 
+{
+    /*get some var*/
+	$selOrg=`ls -sl`;//for recall when bake the selection
+    $sizeSel=size($selOrg);
+    if($sizeSel>0)
+    {ntOptionalBakeUI;}
+    else
+    {ntDefaultBakeUI;}
+}
+
+
+
+//===================UI==================================
+
+/* optional bake:
+                1.selected
+                2.sets
+                3.cancel */
+global proc ntOptionalBakeUI()
+{
+    $aniStart = `playbackOptions -q -min`  ;
+    $aniEnd = `playbackOptions -q -max`  ;
+    if(`window -q -exists ntOptionalBakeUI`)
+    {deleteUI ntOptionalBakeUI;}
+    window -t "Warning" ntOptionalBakeUI ;
+    formLayout mainform;
+        symbolButton -image "caution.png" sym;
+        text  -l ("\n Time Range : "+ $aniStart+" ~ "+$aniEnd +"\n Bake :") -align "center"   checkText;
+        button -l "Selected" -c "deleteUI ntOptionalBakeUI;ntSelBake;"-w 60 -h 30 -bgc 0.3 0.3 0.3 selButton;
+        button -l "Sets" -c "deleteUI ntOptionalBakeUI;ntDefaultBake;"-w 50 -h 30 -bgc 0.3 0.3 0.3 setsButton;
+        button -l "Cancel" -c "deleteUI ntOptionalBakeUI;"-w 50 -h 30 -bgc 0.3 0.3 0.3 noButton;
+    formLayout -e
+        -af sym    top     6
+        -af sym    left    5
+       
+        -af checkText left    40
+       
+        -ac selButton  top     5  checkText
+        -af selButton  left    5
+        
+        -ac setsButton  top    5  checkText
+        -af setsButton  left   75
+       
+        -ac noButton  top    5  checkText
+        -af noButton  left   135  
+        -af noButton  right  5
+        -af noButton  bottom 5
+           mainform;
+    window -e -w 200 -h 50  ntOptionalBakeUI ;
+    showWindow; 
+}
+
+
+/* default bake:
+                1.continue
+                2.cancel */
+global proc ntDefaultBakeUI()
+{
+    $aniStart = `playbackOptions -q -min`  ;//get time rage min
+    $aniEnd = `playbackOptions -q -max`  ;//get time rage max
+    if (`window -q -exists ntDefaultBakeUI`)
+	{deleteUI ntDefaultBakeUI;}
+	window -t "Confirm" ntDefaultBakeUI ;
+	formLayout mainform;
+	    symbolButton -image "caution.png" sym;
+	    text  -l ("\n Export from "+ $aniStart+" to "+$aniEnd +" ?" ) checkText;
+	    button -l "Continue" -c "deleteUI ntDefaultBakeUI;ntDefaultBake;"-w 50 -h 30 -bgc 0.3 0.3 0.3 yesButton;
+	    button -l "Cancle" -c " deleteUI ntDefaultBakeUI; " -w 50 -h 30 -bgc 0.3 0.3 0.3 noButton;
+	formLayout -e
+	    -af sym         top     5
+	    -af sym         left    5
+	   
+	    -af checkText   left    25
+	    -af checkText   right   5 
+	     
+	    -ac yesButton   top     5 checkText
+	    -af yesButton   left    5
+	    -ap yesButton   right   5 48
+	    -af yesButton   bottom  10
+	    
+	    -ac noButton    top     5 checkText
+	    -ap noButton    left    5 48
+	    -af noButton    right   5
+	    -af noButton    bottom  10
+	       mainform;
+	window -e -w 200 -h 50  ntDefaultBakeUI ;
+	showWindow; 
+}
+
+
+//========================PROC======================================
+global proc ntDefaultBake()
+
+{    
+    ntImportRef;
+    select -cl  ;//clear sel
+    select "*forBakeN*";//sel set
+    ntBake;
+    ntDelUndeed;       
+}
+
+
+//
+global proc ntSelBake()
+{
+    ntImportRef;
+    global string $selOrg[];
+    select $selOrg;
+    ntBake;
+    ntDelUndeed;     
+}
+
+//
+global proc ntBake()
+{
+    $bakeStart = `playbackOptions -q -min`  ;
+    $bakeEnd = `playbackOptions -q -max`  ;
+    bakeResults //bake
+                -simulation true   
+                -t ($bakeStart+":"+$bakeEnd) -sampleBy 1 
+                -disableImplicitControl true 
+                -preserveOutsideKeys false 
+                -sparseAnimCurveBake false 
+                -removeBakedAttributeFromLayer false 
+                -removeBakedAnimFromLayer false 
+                -bakeOnOverrideLayer false -minimizeRotation true 
+                -controlPoints false ; 
+}  
+
+//              
+global proc ntImportRef()
+{
+	global string $selOrg[];
+    /*prevent dead loop*/
+    $lock = ( `internalVar  -userTmpDir` + "maya.lock" );// create a file called maya.lock in the tmp directory for manually 
+    $fileId=`fopen $lock "w"`;// create a filehandle for writing
+    fclose $fileId;// close the filehandle
+    
+	/*import all loaded reference*/
+	while (1)//continue looping while there're refs in the scene
+	{
+	    if (!`exists $lock`) 
+	    break;// break if "maya.lock" has been deleted
+	    
+		string $refs[] = `file  -q -r`;//get all ref files'name
+		for ( $ref in $refs )//starts load refs
+	    {
+	         if (!`file -q -dr $ref` )// If Reference is not loaded 
+	        {
+	            string $refn = match( "[^/\\]*$", $ref );//if ref is checked and exists
+	            file  -importReference $refn;//import
+	        }
+	        else//delete unloaded reference
+	        {
+	            file -rr $ref;
+	            continue;
+	        }
+	    }
+	   
+	    if (`size $refs`== 0)   //if there're no refs (in ref)in the scene or no refs are loaded
+	    break; 	
+    } 
+	if (`exists $lock`) // delete the file when we reached the end of the script
+	{sysFile -delete $lock;}
+
+	/*del namespaces*/
+    string $allNodes[] = `ls -ext shape` ;//sel all except shape nodes
+    $myUnknow = `createNode unknown`;//create a unknow node for keeping track of all the objects
+    addAttr -ln "selObjects" -at message -multi -im 0;//add a list to the unknow node
+    for($node in $allNodes)//loop through the list
+    {connectAttr -na ($node + ".message") ($myUnknow + ".selObjects");}//add all nodes to the list
+    for($i=0;$i<`size($allNodes)`;$i++)
+    {
+        string $temp[0]= `listConnections ($myUnknow + ".selObjects["+$i+"]")`;//get the obj of the list 
+        if(`gmatch $temp[0] "*:*" `==1)//if name contains ":"
+        {
+            string $buffer[] ;//set array for splited parts
+            tokenize $temp[0] ":" $buffer ;//split string by ":"
+            string $newName = $buffer[size($buffer)-1] ; //use last part of the string
+            catch(`rename $temp[0] $newName`) ;//rename
+        }
+        else
+        continue;
+    }
+    delete $myUnknow;
+	
+}
+
+
+//
+global proc ntDelUndeed()
+{
+    /*del unneeded*/
+    if(`objExists "*forDelN*"`==1)
+	{string $selDel[]= `select "*forDelN*"`;//sel set
+	string $selForDel[]=`ls -sl`;
+	if (`size $selForDel` >0)
+	{delete;}}
+	if (`objExists "unknown"`)
+	{delete `ls -type "unknown"`;}//delete unknown nodes
+	MLdeleteUnused;//delete unused nodes
+}
+

@@ -1,0 +1,18 @@
+/*
+ntSetKeyRange v0.1 
+
+
+update -- 20161008  
+
+//directions:
+1.set time slider range to key range we have
+
+*/
+
+global proc ntSetKeyRange()
+{
+    select  -all;
+    $firstFps =`findKeyframe  -which first`;
+    $lastFps  =`findKeyframe  -which last`;
+    playbackOptions -min $firstFps -max $lastFps ;
+}ntSetKeyRange;

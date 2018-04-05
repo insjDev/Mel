@@ -1,0 +1,89 @@
+/*
+
+Notice: The chapter's name is gonna be the file name.
+
+        Last chapter will not be saved which suppose to be all animation
+
+Open the "FBX" that has all animation and all the chapters are included.
+
+*/
+
+
+//get all the chapter's name
+string $cps[] =`listRelatives -c Chapter`;
+//get the amount of the chapters
+int $sizecps=`size($cps)`;
+//save files by the name of the chapter
+int$k;
+        for
+        ($k=1;$k<$sizecps-1;$k++)
+        {
+            //get the opened file name
+            string $filename=`file -q -sn`;
+            //get the folder where the file is
+            string $path = `file -query -sceneName`;
+			//set the full path and name of the file is gonna be saved
+			string $dirname = (dirname($path)+ "/"+$cps[$k]);
+            //export the scene
+            file -force -options "fbx" -type "FBX export" -pr -ea ($dirname);
+             }
+/*
+
+Open the "FBX" that has all animation and all the chapters are included.
+
+Be sure inn the file folder already has separated files
+
+*/
+
+//find file full path
+string $path = `file -query -sceneName`;
+//set the folder path
+string $dirname = (dirname($path))+"/";
+//get all the file names in the folder 
+string $files[]=`getFileList -fld $dirname -fs "*.fbx"`;
+//get file amount
+$sizeFiles=`size ($files)`;
+//delete unneeded keys
+int $k;
+        for ($k=0;$k<$sizeFiles;$k++)
+            { 
+                //open the file
+                file -f -options "fbx"  -typ "FBX" -o $files[$k];addRecentFile($files[$k], "FBX");
+			    //get the file name
+			    string $pathsave = `file -query -sceneName`;		   
+				//get the file base name to match chapter name
+				string $fileShortName= basename($pathsave,".fbx");
+				//get all the chapters'name
+				string $cps[] =`listRelatives -c Chapter`;
+				//get amount of chapters
+				int $sizecps=`size($cps)`;
+				        int$l;
+				                for($l=1;$l<$sizecps-1;$l++)
+				                   {
+						                 //if file match chapter
+						                 if ( $cps[$l]== $fileShortName )
+                                            { 
+											    //get the chapter time range
+											    float $px=`getAttr ($cps[$l]+".tx")`;
+												float $py=`getAttr ($cps[$l]+".ty")`;
+												//del keys before chapter time rannge
+												string $deltimea="-100:"+($px-1);
+                                                select -r worldJoint root spine neck neck1p neck2p head head1p ear_left ear_del_left ear_right ear_del_right jaw chest clavical_left shldr_left elbow_left wrist_left finger_left clavical_right shldr_right elbow_right wrist_right finger_right upleg_left knee_left ankle_left ball_left hip hipTip tail1p tail2p tail3p tail4p tail5p tail6p tail7p tail_del upleg_right knee_right ankle_right ball_right ;
+                                                cutKey -t $deltimea;
+												//del keys before chapter time rannge
+												string $deltimeb=($py+1)+":10000";
+												select -r worldJoint root spine neck neck1p neck2p head head1p ear_left ear_del_left ear_right ear_del_right jaw chest clavical_left shldr_left elbow_left wrist_left finger_left clavical_right shldr_right elbow_right wrist_right finger_right upleg_left knee_left ankle_left ball_left hip hipTip tail1p tail2p tail3p tail4p tail5p tail6p tail7p tail_del upleg_right knee_right ankle_right ball_right ;
+                                                cutKey -t $deltimeb;
+												//set slide time range as chapter for unity
+												playbackOptions	-min $px -max $py ;
+												//delete chapter
+												delete Chapter;
+												//export file	
+												file -force -options "fbx" -type "FBX export" -pr -ea ($pathsave);
+											    }
+										}
+                        }
+
+
+
+

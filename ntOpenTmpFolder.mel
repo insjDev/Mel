@@ -1,0 +1,16 @@
+/*
+ntOpenTmpFolder v0.1 
+
+
+update -- 2017-03-18 
+
+//directions:
+1.open the temp folder where maya save files automatically when crash happens
+
+*/
+
+global proc ntOpenTmpFolder()
+{
+	string $myScriptDir = `internalVar -userTmpDir`;
+	system("load" + $myScriptDir);
+}ntOpenTmpFolder;

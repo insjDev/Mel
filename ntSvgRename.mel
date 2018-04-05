@@ -1,0 +1,11 @@
+  select "svgMesh*";
+    $mySvgs=`ls -tr -sl`;
+    print $mySvgs;
+    for ($mySvg in $mySvgs)
+    {
+        $svg=`listConnections $mySvg`;
+        $sel[0]=`getAttr ($svg[0]+".svgFilepath")`;
+        string $baseName= basename($sel[0],".svg");
+        rename $mySvg $baseName;
+        rename $svg[0] ($baseName+"_svg");
+    }

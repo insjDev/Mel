@@ -1,0 +1,316 @@
+/*
+ntAssignMat v0.1 
+
+
+update -- 2017-01-11   
+
+//directions:
+*** for maya 2016
+1.assign new mat by its name or a new name;
+2.choose a file type to link
+3.toggle if its a alpha texture
+
+*/
+
+global proc ntAssignMat()
+{
+	if (`window -ex ntAssignMatUI `)
+	deleteUI ntAssignMatUI;
+	window -s 0 -t "ntAssignMat"  ntAssignMatUI ;
+		formLayout ntAssignMatframe;
+			checkBoxGrp -l "Transparency:" -cw2 70 20 -l1 "" opacityCheck;
+			optionMenuGrp -l "File Type: " -cw2 50 60 -cc "" fileType; 
+	                      menuItem  -l ".psd" ;
+	                      menuItem  -l ".png" ;
+	                      menuItem  -l ".jpg" ;  
+	                      menuItem  -l ".tga" ;
+			button -l "Create Shader Name after Selected's"   -w 218 -c "ntAssignMatName()" nameButton; 
+			text -l "or" orText;
+			textFieldButtonGrp -l "Use a New Name :" -text "" -bl "go" -cw3 94 96 30 -bc "ntAssignMatNew()" newMatTFG;
+		formLayout -e
+			-af opacityCheck  top     8  
+			-af opacityCheck  left    5
+			
+			-af fileType  	  top     5  	
+			-af fileType      left    100
+			
+			-ac nameButton    top     5  	fileType
+			-af nameButton    left    5
+			
+			-ac orText    top     5  	nameButton
+			-af orText    left    95
+			
+			-ac newMatTFG     top     5  	orText
+			-af newMatTFG     left    5
+			
+			ntAssignMatframe;
+	window -e -w 210 -h 110 ntAssignMatUI;
+	showWindow ntAssignMatUI;
+} 
+ntAssignMat;
+
+
+//
+
+global proc ntAssignMatName() 
+{
+	string $geos[] = `ls -type transform -sl`;
+	for ($geo in $geos)
+	{
+		gmatch $geo "*|*" ;
+		string $buffer[] ;
+		tokenize $geo "|" $buffer ;
+		string $baseName = $buffer[size($buffer)-1] ; 
+		
+		string $matOpacity = `checkBoxGrp -q -v1 opacityCheck`;
+		string $fileType = `optionMenuGrp -q -v fileType`;
+		
+		string $myMat=($baseName+"_mat");
+		string $myFile=($baseName+"_file");
+		string $mySG=($baseName+"SG");
+		string $my2dTexture=($baseName+"_place2dTexture");
+		string $myNodes[] = {$myMat, $mySG, $myFile,$my2dTexture};
+		
+		string $myOutputs[] = {".vertexUvOne", ".vertexUvTwo", ".vertexUvThree", ".vertexCameraOne", ".offsetU", ".offsetV", ".repeatU", ".repeatV" };
+		
+		for ($i=0;$i<4;$i++)
+		if(!`objExists $myNodes[$i]`)
+		{
+			switch($i)
+			{
+				case 0: 
+					shadingNode -asShader blinn -name $myMat;
+					setAttr ($myMat+".specularRollOff") 0; 
+					break;
+				case 1:
+					sets -renderable true -noSurfaceShader true -empty -name $mySG;
+					break;
+				case 2:
+					shadingNode  -asTexture -isColorManaged file -name $myFile;
+					break;
+				case 3:
+					shadingNode -n $my2dTexture -asUtility place2dTexture;
+					break;
+			}
+		}
+		
+		if (!`connectionInfo -is ( $myFile+".outColor" )`)
+		{connectAttr -f ( $myFile+".outColor" ) ($myMat+".color" );}				
+		if (!`connectionInfo  -is ($myMat+".outColor")`)
+		{connectAttr  -f ($myMat+".outColor") ( $mySG+".surfaceShader" );}
+		if (!`connectionInfo -is ($my2dTexture+".outUV" )`)
+		{connectAttr  -f ($my2dTexture+".outUV" ) ( $myFile+".uv" );}
+		if (!`connectionInfo -is ($my2dTexture+".outUvFilterSize" )`)
+		{connectAttr  -f ($my2dTexture+".outUvFilterSize" ) ( $myFile+".uvFilterSize" );}
+		for ($myOutput in $myOutputs)
+		{
+			if (!`connectionInfo -is ($my2dTexture+$myOutput )`)
+			{connectAttr  -f ($my2dTexture+$myOutput ) ( $myFile+$myOutput );}
+		}
+		
+		if ($matOpacity ==1)
+		{
+			if (!`connectionInfo -is ( $myFile+".outTransparency" )`)
+			{connectAttr -f ( $myFile+".outTransparency" ) ($myMat+".transparency" );}
+		} 
+		else
+		{
+			if (`connectionInfo -is ( $myFile+".outTransparency" )`)
+			{disconnectAttr  ( $myFile+".outTransparency" ) ($myMat+".transparency" );}
+		}
+			
+		setAttr -type "string" ($myFile+".fileTextureName" ) ("sourceimages\\"+$myMat+$fileType);
+		
+		sets -forceElement $mySG $geo;
+		
+		$img = "confirm.png";
+		$warnText = "\n Done!\n";
+		$colseCmd = "deleteUI messageWin;";
+		if (`window -q -exists messageWin`)
+	    {deleteUI messageWin;}
+	    window -t ""  messageWin ;
+			formLayout  mainform;
+				symbolButton -image $img sym; 
+				text -l $warnText warnText;
+				
+			formLayout -e
+				-af sym         top     15
+				-af sym         left    35
+				
+				-af warnText    top     8 
+				-af warnText   right   15 
+				-af warnText   left    40 
+				
+				
+				mainform;
+		window -e  -w 50 -h 50  messageWin;
+		showWindow messageWin;
+	}
+}
+
+//
+global proc ntAssignMatNew() 
+{
+	string $matNew = `textFieldButtonGrp -q -tx newMatTFG`;
+	string $baseName = $matNew; 
+	string $geos[] = `ls -type transform -sl`;
+	for ($geo in $geos)
+	{
+		string $matOpacity = `checkBoxGrp -q -v1 opacityCheck`;
+		string $fileType = `optionMenuGrp -q -v fileType`;
+		
+		string $myMat=($baseName+"_mat");
+		string $myFile=($baseName+"_file");
+		string $mySG=($baseName+"SG");
+		string $my2dTexture=($baseName+"_place2dTexture");
+		string $myNodes[] = {$myMat, $mySG, $myFile,$my2dTexture};
+		
+		string $myOutputs[] = {".vertexUvOne", ".vertexUvTwo", ".vertexUvThree", ".vertexCameraOne", ".offsetU", ".offsetV", ".repeatU", ".repeatV" };
+		
+		for ($i=0;$i<4;$i++)
+		if(!`objExists $myNodes[$i]`)
+		{
+			switch($i)
+			{
+				case 0: 
+					shadingNode -asShader blinn -name $myMat;
+					setAttr ($myMat+".specularRollOff") 0; 
+					break;
+				case 1:
+					sets -renderable true -noSurfaceShader true -empty -name $mySG;
+					break;
+				case 2:
+					shadingNode -asTexture -isColorManaged file -name $myFile;
+					break;
+				case 3:
+					shadingNode -n $my2dTexture -asUtility place2dTexture;
+					break;
+			}
+		}
+		
+		if (!`connectionInfo -is ( $myFile+".outColor" )`)
+		{connectAttr -f ( $myFile+".outColor" ) ($myMat+".color" );}				
+		if (!`connectionInfo  -is ($myMat+".outColor")`)
+		{connectAttr  -f ($myMat+".outColor") ( $mySG+".surfaceShader" );}
+		if (!`connectionInfo -is ($my2dTexture+".outUV" )`)
+		{connectAttr  -f ($my2dTexture+".outUV" ) ( $myFile+".uv" );}
+		if (!`connectionInfo -is ($my2dTexture+".outUvFilterSize" )`)
+		{connectAttr  -f ($my2dTexture+".outUvFilterSize" ) ( $myFile+".uvFilterSize" );}
+		for ($myOutput in $myOutputs)
+		{
+			if (!`connectionInfo -is ($my2dTexture+$myOutput )`)
+			{connectAttr  -f ($my2dTexture+$myOutput ) ( $myFile+$myOutput );}
+		}
+		
+		if ($matOpacity ==1)
+		{
+			if (!`connectionInfo -is ( $myFile+".outTransparency" )`)
+			{connectAttr -f ( $myFile+".outTransparency" ) ($myMat+".transparency" );}
+		} 
+		else
+		{
+			if (`connectionInfo -is ( $myFile+".outTransparency" )`)
+			{disconnectAttr  ( $myFile+".outTransparency" ) ($myMat+".transparency" );}
+		}
+			
+		setAttr -type "string" ($myFile+".fileTextureName" ) ("sourceimages\\"+$myMat+$fileType);
+		
+		sets -forceElement $mySG $geo;
+		
+		$img = "confirm.png";
+		$warnText = "\n Done!\n";
+		$colseCmd = "deleteUI messageWin;";
+		if (`window -q -exists messageWin`)
+	    {deleteUI messageWin;}
+	    window -t ""  messageWin ;
+			formLayout  mainform;
+				symbolButton -image $img sym; 
+				text -l $warnText warnText;
+				
+			formLayout -e
+				-af sym         top     15
+				-af sym         left    35
+				
+				-af warnText    top     8 
+				-af warnText   right   15 
+				-af warnText   left    40 
+				
+				mainform;
+		window -e  -w 50 -h 50  messageWin;
+		showWindow messageWin;
+	}
+}
+
+//assign mat name after its parent
+//not in use but as a reference
+global proc ntAssignMatGrp() 
+{
+	string $geos[] = `ls -type transform -sl`;
+	for ($geo in $geos)
+	{
+		string $geoPs[]= `listRelatives -p $geos`;
+		print $geoPs;
+	
+		for ($geoP in $geoPs)
+		{
+			string $baseName = $geoP ; //use last part of the string
+			print $baseName;
+			//node names
+			string $myMat=($baseName+"_mat");
+			string $myFile=($baseName+"_file");
+			string $mySG=($baseName+"SG");
+			string $my2dTexture=($baseName+"_place2dTexture");
+			string $myNodes[] = {$myMat, $mySG, $myFile,$my2dTexture};
+			//2dTexture outputs	
+			string $myOutputs[] = {".vertexUvOne", ".vertexUvTwo", ".vertexUvThree", ".vertexCameraOne", ".offsetU", ".offsetV", ".repeatU", ".repeatV" };
+			//check for mat nodes exists, if not -> create
+			for ($i=0;$i<4;$i++)
+			if(!`objExists $myNodes[$i]`)
+			{
+				switch($i)
+				{
+					case 0: 
+						shadingNode -asShader lambert -name $myMat;
+						break;
+					case 1:
+						sets -renderable true -noSurfaceShader true -empty -name $mySG;
+						break;
+					case 2:
+						shadingNode -asTexture -isColorManaged file -name $myFile;
+						break;
+					case 3:
+						shadingNode -n $my2dTexture -asUtility place2dTexture;
+						break;
+				}
+			}
+			//check for connections	
+			if (!`connectionInfo -is ( $myFile+".outColor" )`)//link file
+			{connectAttr -f ( $myFile+".outColor" ) ($myMat+".color" );}				
+			
+			if (!`connectionInfo  -is ($myMat+".outColor")`)//link SG	
+			{connectAttr  -f ($myMat+".outColor") ( $mySG+".surfaceShader" );}
+				
+			if (!`connectionInfo -is ($my2dTexture+".outUV" )`)//link 2dTexture
+			{connectAttr  -f ($my2dTexture+".outUV" ) ( $myFile+".uv" );}
+			
+			if (!`connectionInfo -is ($my2dTexture+".outUvFilterSize" )`)//link 2dTexture
+			{connectAttr  -f ($my2dTexture+".outUvFilterSize" ) ( $myFile+".uvFilterSize" );}
+			
+			//link 2dTexture
+			for ($myOutput in $myOutputs)
+			{
+				if (!`connectionInfo -is ($my2dTexture+$myOutput )`)
+				connectAttr  -f ($my2dTexture+$myOutput ) ( $myFile+$myOutput );
+			}
+			
+			setAttr -type "string" ($myFile+".fileTextureName" ) ("sourceimages\\"+$myMat+".png");// Assign file to File Texture Name
+			sets -forceElement $mySG $geo;
+		}
+		
+	}
+}
+
+
+
+
+

@@ -1,0 +1,33 @@
+/*
+ntDelNameSpace v0.2
+
+update -- 2016-10-08    
+update -- 2017-10-11 cannot track the obj after renamed so add them to an unknow node as a list 
+
+//directions:
+1.delete all namespaces in the scene;
+
+*/
+
+global proc ntDelNameSpace()
+{
+    string $allNodes[] = `ls -ext shape` ;//sel all except shape nodes
+    $myUnknow = `createNode unknown`;//create a unknow node for keeping track of all the objects
+    addAttr -ln "selObjects" -at message -multi -im 0;//add a list to the unknow node
+    for($node in $allNodes)//loop through the list
+    {connectAttr -na ($node + ".message") ($myUnknow + ".selObjects");}//add all nodes to the list
+    for($i=0;$i<`size($allNodes)`;$i++)
+    {
+        string $temp[0]= `listConnections ($myUnknow + ".selObjects["+$i+"]")`;//get the obj of the list 
+        if(`gmatch $temp[0] "*:*" `==1)//if name contains ":"
+        {
+            string $buffer[] ;//set array for splited parts
+            tokenize $temp[0] ":" $buffer ;//split string by ":"
+            string $newName = $buffer[size($buffer)-1] ; //use last part of the string
+            catch(`rename $temp[0] $newName`) ;//rename
+        }
+        else
+        continue;
+    }
+    delete $myUnknow;
+}ntDelNameSpace;

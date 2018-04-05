@@ -1,0 +1,44 @@
+/*
+ntImportRefs v0.1 
+
+update -- 2016-10-08 
+
+//directions:
+1.import all loaded references;
+
+*/
+
+global proc ntImportRefs()
+{
+    /*prevent dead loop*/
+    $lock = ( `internalVar  -userTmpDir` + "maya.lock" );// create a file called maya.lock in the tmp directory for manually 
+    $fileId=`fopen $lock "w"`;// create a filehandle for writing
+    fclose $fileId;// close the filehandle
+    
+    /*import all loaded reference*/
+    while (1)//continue looping while there're refs in the scene
+    {
+        if (!`exists $lock`) 
+        break;// break if "maya.lock" has been deleted
+        
+    	string $refs[] = `file  -q -r`;//get all ref files'name
+    	for ( $ref in $refs )//starts load refs
+        {
+            if (!`file -q -dr $ref` )// If Reference is not loaded 
+            {
+                string $refn = match( "[^/\\]*$", $ref );//if ref is checked and exists
+                file  -importReference $refn;//import
+            }
+            else//delete unloaded reference
+            {
+                file -rr $ref;
+                continue;
+            }
+        }
+       
+        if (`size $refs`== 0) //if there're no refs (in ref)in the scene or no refs are loaded
+        break; 	
+    } 
+    if (`exists $lock`) // delete the file when we reached the end of the script
+    {sysFile -delete $lock;}
+}ntImportRefs;

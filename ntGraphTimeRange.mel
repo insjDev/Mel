@@ -1,0 +1,1 @@
+animView -startTime (`playbackOptions -query -minTime` - 1) -endTime (`playbackOptions -query -maxTime` + 1) graphEditor1GraphEd;

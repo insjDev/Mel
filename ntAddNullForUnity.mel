@@ -1,0 +1,63 @@
+/*
+ntAddNullForUnity v0.1 
+
+
+update -- 2016-01-26 
+update -- 2016-12-12 add a zero out null under forUnity ; add aim constrain to make null always point at z front
+  
+//directions:
+*** for maya 2016
+1.add a null to the sel for unity to ctrl ( tz is the front axis
+2.sel all the obj you want to add a "_forUnity" null
+
+*/
+
+
+//==============================//
+//===== ntAddNullForUnity() ====//
+//==============================//
+
+//..select jnts
+//..get jnt position for later algin
+//..get sel jnt parent for later parent
+//..use fist part as base name
+//..create a null name it "jntGrp"
+//..move jnt_forUnity to jnt position
+//..parent jntGrp to jnt parent
+//..parent jnt to jntGrp
+//..group $jnt name it jntContainer
+
+$sela =`ls - sl`; //sel all the obj u want to add a null on top of it
+for ($jnt in $sela)//loop through them
+{
+	
+	select -cl;
+	select $jnt;//sel one obj
+	
+	$source =`xform -q -ws -t $jnt`;//get obj position
+	$selp =`pickWalk -d up`;//get its parent name 
+	
+    string $buffer[] ;//set a string for name
+    tokenize $jnt "_" $buffer ;//split string by ":"
+    string $newName = $buffer[0] ; //use last part of the string
+	print $newName;
+	select -cl;
+	doGroup 0 1 1 ;//create a null
+	$myNull= `ls -sl`;
+	$myNull[0]=`rename $myNull[0] ($newName + "Grp")`;//name it *_forUnity
+	
+	xform -ws -t $source[0] $source[1] $source[2] $myNull[0];//move null to objs position
+	$nloc =`parent $myNull[0] $selp`;//parent null to objs parent
+	parent $jnt $nloc;//parent obj to null
+	select $jnt;
+	doGroup  0 1 1;
+	rename `ls -sl` ($newName + "Container");//name it *_forUnity
+	$myLoc = `spaceLocator -n ($newName + "Aimer") `;
+	xform -ws -t $source[0] $source[1] ($source[2]+50) $myLoc;
+	if (`objExists Main`)
+	{parent $myLoc Main;}
+	pointConstraint -mo -skip z -weight 1 $jnt $myLoc;
+	aimConstraint -mo -weight 1 -aimVector 1 0 0 -upVector 0 1 0 -worldUpType "vector" -worldUpVector 0 1 0 $myLoc $nloc;
+	
+	
+}

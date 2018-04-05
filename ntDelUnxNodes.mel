@@ -1,0 +1,16 @@
+/*
+ntDelUnxNodes v0.1 
+
+update -- 2011-03-16     
+
+//directions:
+1.delete all unknow nodes; 
+2.delete all unUsed nodes;
+
+*/
+
+global proc ntDelUnxNodes()
+{
+    MLdeleteUnused;//delete unUsed nodes
+    delete `ls -type "unknown"`;//delete unknown nodes   
+}ntDelUnxNodes;

@@ -1,0 +1,81 @@
+/*
+ntSetAnimChapter v0.3
+
+
+update -- 2016-01-13  
+update -- 2016-03-28 delete null obj under Chapter
+update -- 2017-3-19 pop up warning win when there's no Animation Clip created which prevent dead loop
+
+//directions:
+1.create Chapter via Clips
+
+*/
+
+global proc ntSetAnimChapter()
+{	
+	//open game exporter and set to anim clip tab
+    gameFbxExporter;
+    gameExp_ChangeExportType(2);   
+    gameExp_PopulatePresetList();
+    gameExp_CreateExportTypeUIComponents(); 
+	//---- if chapter exists del current and create new -----//
+	if(`objExists Chapter`==1)
+	{
+		delete Chapter;
+	}
+	select -cl;
+	doGroup 0 1 1 ;
+	rename `ls -sl` Chapter;
+	//---- get anim clip amount ----//
+	global string $gGameFbxExporterCurrentNode;//get the current gameExporter Node 
+	int $nbAnimClips = `getAttr -size ($gGameFbxExporterCurrentNode + ".animClips")`;//get the amount of the clips
+	
+	//----- create same amount of locators ----//
+	int $lt=0;//loop times
+	while(1)
+	{
+		if ($nbAnimClips==0)
+		{
+			window -t "Error!" -w 200 errWin ;
+		        columnLayout -adj true;  
+		        text -l "";
+		        text -l ("Please create Animation Clips first !" );
+		        text -l "";
+		        showWindow;
+		        break;
+		}
+		select -cl;//desel everything
+		doGroup 0 1 1;//create a null obj
+		select -add Chapter ;//add sel chapter
+		parent;//parent null to chapter
+		$lt ++;//count 1
+		if ($lt == $nbAnimClips)//if loop times reach anim clip amount
+		{
+			break;//stop
+		}
+	}
+	//------ set clip attr --------//
+	for($i=0; $i < $nbAnimClips; $i++ )//loop through anim clips
+	{
+	    if(!`getAttr ($gGameFbxExporterCurrentNode + ".animClips[" + $i + "].exportAnimClip")`)//skip the clips haven't been chosen
+	    {
+	        continue;
+	    }
+	    string $clipName = `getAttr ($gGameFbxExporterCurrentNode + ".animClips[" + $i + "].animClipName")`;//get the name of the clip
+	    string $animClipStartTime = `getAttr ($gGameFbxExporterCurrentNode + ".animClips[" + $i +  "].animClipStart")`;//get start frame of the clip
+	    string $animClipEndTime = `getAttr ($gGameFbxExporterCurrentNode + ".animClips[" + $i +  "].animClipEnd")`;//get end frame of the clip
+	    // Refresh the clip list
+	    $gameFbxExporterScrollLayout = gameExp_GetPrefixedName("gameFbxExporterScrollLayout");
+		gameExp_CreateScrollAnimationClipLayout();
+		string $null[]=`listRelatives -c Chapter`;//list all chapter children including itself
+		rename $null[($i)] $clipName;//skip chapter so the first null count is $i+1
+		string $attrX = ("Chapter|"+$clipName+".translateX");//set attr string
+		int $attrvalueX = $animClipStartTime;//set value
+		int $attrvalueY = $animClipEndTime;
+		string $attrY = ("Chapter|"+$clipName+".translateY");
+		setAttr $attrX  $attrvalueX;//set attr
+		setAttr $attrY  $attrvalueY;
+	}
+	if (`objExists "Chapter|null*"`)
+	{delete "Chapter|null*";}
+}ntSetAnimChapter;

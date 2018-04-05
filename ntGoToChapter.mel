@@ -1,0 +1,34 @@
+/*
+translate.x = start time 
+translate.y = end time
+set time slide from x to y
+*/
+
+global proc ntGoToChapter()
+{
+    string $sel[]=`ls -sl`;
+    int $size = size ($sel);
+    if ($size<1)
+    {
+    	window -t "Error!" -w 200  ;
+    	columnLayout -adj true;  
+    	text -l "Select the Chapter first!" ;
+    	showWindow;
+    }
+    else
+    {
+    	float $px=`getAttr ($sel[0]+".tx")`;
+    	float $py=`getAttr ($sel[0]+".ty")`;
+        if ($px>=$py)
+        {
+    	    window -t "Error!" -w 200  ;
+    		columnLayout -adj true;  
+    		text -l "Chapter's time range is wrong !" ;
+    		showWindow;
+    	}
+    	else
+    	{
+    		playbackOptions -min $px -max $py ;
+    	}	
+    }
+}ntGoToChapter;

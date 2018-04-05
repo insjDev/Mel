@@ -1,0 +1,120 @@
+/*
+ntOneKeyPlayblast v0.1 
+
+
+update -- 2016-10-08 
+
+//directions:
+*** for maya 2016
+1.turn on heads up and playblast clips using " Game Exporter " settings
+
+*/
+
+//add headsUpDisplay
+if (`headsUpDisplay -exists dateName`)
+    	headsUpDisplay -rem dateName;
+    
+if (`headsUpDisplay -exists frameCounter`)
+    	headsUpDisplay -rem frameCounter;
+
+headsUpDisplay-l "Date | Time "
+	-allowOverlap 1
+	-command "date -format \"YYYY / MM / DD \ |   hh:mm \""
+	-b 3
+	-s 5
+	-event "idle"
+    //-nodeChanges "attributeChange";
+dateName;
+                        		 
+headsUpDisplay	-l "Frame         "
+		-allowOverlap 1
+		-b 2
+		-s 8
+		-nodeChanges "instanceChange"
+		-dataFontSize large
+		-preset "currentFrame"
+frameCounter;
+                        			                       			
+//Playblast clips using " Game Exporter " settings 
+global proc ntGamePlayblast()
+{
+        //make sure game exporter is set
+        if (!`window -q -exists gameExporterWindow`)//if game exporter is not opened, pop warning window
+        {  
+            if (`window -q -exists gameExporterCheckWin`)//if the warning window is opened, close
+            {deleteUI gameExporterCheckWin;}
+                
+                window -t "Wait !" gameExporterCheckWin ;//create check window
+                
+                    formLayout waitform;
+                    
+                        text   -l "\n \"Game Exporter is NOT OPEN\" \n" waittext;
+                        button -l "Close" -c "deleteUI gameExporterCheckWin;"-w 50 -h 30 -bgc 0.3 0.3 0.3 waitButton;
+                
+                    formLayout -e
+                               -af waittext    top     5
+                               -af waittext    left    5
+                               -af waittext    right   5 
+                                
+                               -ac waitButton  top     5 waittext
+                               -af waitButton  left    40
+                               -af waitButton  right   40
+                               -af waitButton  bottom  10
+                           waitform;
+                 window -e -w 200 -h 50  gameExporterCheckWin; //reload window
+                 showWindow gameExporterCheckWin;             
+          }   
+         
+         global string $gGameFbxExporterCurrentNode;//get the current gameExporter Node 
+             int $nbAnimClips = `getAttr -size ($gGameFbxExporterCurrentNode + ".animClips")`;//get the amount of the clips
+             
+             for($i=0; $i < $nbAnimClips; $i++ )
+             {
+                if(!`getAttr ($gGameFbxExporterCurrentNode + ".animClips[" + $i + "].exportAnimClip")`)//skip the clips haven't been chosen
+                {continue;}
+                    
+                string $clipName = `getAttr ($gGameFbxExporterCurrentNode + ".animClips[" + $i + "].animClipName")`;//get the name of the clip
+                string $animClipStartTime = `getAttr ($gGameFbxExporterCurrentNode + ".animClips[" + $i +  "].animClipStart")`;//get start frame of the clip
+                string $animClipEndTime = `getAttr ($gGameFbxExporterCurrentNode + ".animClips[" + $i +  "].animClipEnd")`;//get end frame of the clip
+                string $dir = `getAttr($gGameFbxExporterCurrentNode + ".exportPath")`;//get the path we choose
+                string $prefix = `getAttr($gGameFbxExporterCurrentNode + ".exportFilename")`;//get the prefix we put in
+                string $pathsave= $dir+"/"+$prefix+$clipName + ".mov";//set save path (folder + prefix + chapter name)
+                 
+                // Refresh the clip list
+                $gameFbxExporterScrollLayout = gameExp_GetPrefixedName("gameFbxExporterScrollLayout");
+                gameExp_CreateScrollAnimationClipLayout();
+                            
+                //Do playblast
+                playblast 
+                    -startTime $animClipStartTime 
+                    -endTime $animClipEndTime  
+                    -format qt 
+                    -filename $pathsave 
+                    -forceOverwrite -sequenceTime 0 -clearCache 1 -viewer 0 -showOrnaments 1 -fp 4 -percent 80 -compression "H.264" -quality 70;
+             } 
+             
+              //deleteUI nt_playblastToolUI;
+              window -t "" playblastReportWin ;//create check window
+                
+                    formLayout waitform;
+                    
+                        text   -l "\n Done ! \n" waittext;
+                        button -l "Close" -c "deleteUI playblastReportWin;"-w 50 -h 30 -bgc 0.3 0.3 0.3 waitButton;
+                
+                    formLayout -e
+                               -af waittext    top     5
+                               -af waittext    left    5
+                               -af waittext    right   5 
+                                
+                               -ac waitButton  top     5 waittext
+                               -af waitButton  left    40
+                               -af waitButton  right   40
+                               -af waitButton  bottom  10
+                           waitform;
+                 window -e -w 200 -h 50  playblastReportWin; //reload window
+                 showWindow playblastReportWin;            
+} ntGamePlayblast;    
+
+headsUpDisplay -rem dateName;       
+headsUpDisplay -rem frameCounter; 
+             			

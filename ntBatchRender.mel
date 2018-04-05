@@ -1,0 +1,295 @@
+/*
+ntBatchRender v1.1 
+
+
+update -- 2015-12-23
+
+//directions:
+*** for maya 2016
+1.Batch render diffuse map
+
+*/
+
+{
+        // -------------- UI --------------
+        global proc ntBatchRender()
+        {
+                if (`window -ex nt_batchRenderToolUI `)
+                deleteUI nt_batchRenderToolUI;
+                 
+                window -t "Batch Render Tool N"  nt_batchRenderToolUI ;
+                
+                //  formLayout mainform;
+                frameLayout -lv 1 -l "Hierarchy Instruction : "  instructionframe ;
+                        text -al left -l  "    abc_LowGRP           abc_HighGRP" ;
+                        text -al left -l  "      |___ a_low                |___ a_high";
+                        text -al left -l  "      |___ b_low                |___ b_high" ;
+                    rowColumnLayout  -nc 2   -cat 10 left 10 ;     
+                            text -al left -l  "  * Check if obj's name and amount matches  :     " ;
+                            button   -l "Check" -c "nt_bakeSizeCheck"   ;
+                            //text -al left -l" *Put all files that need to bake in one folder";
+                                setParent .. ;
+                       
+                frameLayout -lv 1 -l "Choose the Folder for Batch Render :"  chooseframe ;
+                        textFieldButtonGrp -l "Path : " -text (`workspace -q -fn` +"/scenes/") 
+                                           -bl "Browse" -bc "getPath" -cw3  100 300 40 
+                                           MyRenderPath;
+                     
+                        optionMenuGrp -l "Output Map : " -cw2  100 80  mapType ;
+                                menuItem -l "diffuseRGB" ;
+                                menuItem -l "----" ; // for later output map type choose
+                        optionMenuGrp      -l "Resolution : " -cw2 100 80 res ;
+                                menuItem -l "256" ; 
+                                menuItem -l "512" ;
+                                menuItem -l "1024" ;
+                                menuItem -l "2048";
+                                    optionMenuGrp -e -v 256  res ;
+                        optionMenuGrp -l "Sampling quality: " -cw2 100 80 samplingQ ;
+                                menuItem -l "Preview (1x1)" ; 
+                                menuItem -l "Low (2x2)" ;
+                                menuItem -l "Medium (4x4)" ;
+                                menuItem -l "High (8x8)" ;
+                                    optionMenuGrp -e -v "Preview (1x1)"  samplingQ ;
+                        floatSliderGrp -l "Filter size:" -field 1 
+                                       -fieldMinValue 1 -fieldMaxValue 8 
+                                       -minValue 1 -maxValue 8 -value 4 
+                                       -cw3  100 60 100
+                                       filtersizeslider;
+                        textFieldGrp -l "Fill texture seams: " -cw2 100 60 -tx 4 filltexture;
+                        floatSliderGrp -l"Search evelope (%)" -field 1  
+                                       -fieldMinValue 0.0 -fieldMaxValue 100.0 
+                                       -minValue 0.0 -maxValue 100.0 -value 0.1 
+                                       -cw3  100 60 60
+                                       searchenv;
+                        button -l "Bake" -c "nt_diffuseBake";
+                   
+                window -e -w 300 -h 80  nt_batchRenderToolUI ;
+                showWindow nt_batchRenderToolUI;
+        }
+        
+        // -------------- browse button : get path for batch render -------------- 
+        global proc getPath()
+        {
+                global string $rvbr_pathNameCont;
+                fileBrowserDialog -m 4 -fc setPath -an "select path";
+                textFieldButtonGrp -e -tx ($rvbr_pathNameCont +"/") MyRenderPath;
+        }
+        
+        global proc setPath (string $vbr_name , string $fileType )
+        {
+                global string $rvbr_pathNameCont; 
+                $rvbr_pathNameCont = $vbr_name ;
+        }
+        // -------------- check if the low geo match the high geo  --------------
+        global proc nt_bakeSizeCheck()
+         {
+                 //get all low grp
+                 string $LowGRP[]=`ls ("*LowGRP")  `;
+                 int $sizeLowGRP=`size($LowGRP)`;
+                 int$i;
+                 for($i=0;$i<$sizeLowGRP;$i++)//start with first low grp
+                 {  
+                         string $orgLowGEO[] =`listRelatives -c ($LowGRP[$i])`; //get all low geo
+                         string $LowGEO[]=`sort $orgLowGEO`; // get order
+                         string $sizeLowGEO=size($LowGEO); // get the amount of low geo
+                         string $LowBaseName = basename  ( $LowGRP[$i],"LowGRP") ; //get low grp base name (tokenize "_LowGRP")
+                         string $HighGRP = $LowBaseName+"HighGRP"; //replace low base name to get it's high group
+                         string $orgshapes[]=`listRelatives -c $HighGRP`; //get high geo
+                         string $shapes[]=`sort $orgshapes`; // get order
+                         int $sizeShape = `size $shapes`;// get the amount of high geo
+                         if ($sizeShape != $sizeLowGEO) // if low geo amount does not match high geo's in one group set
+                         {
+                                 // pop up amount does not match win
+                                 if (`window -q -exists batchBakeCheckWin`)
+                                 {deleteUI batchBakeCheckWin;}
+                       
+                                 window -t "Wait !" batchBakeCheckWin ;
+                                         formLayout waitform;
+                                         text   -l ("\n The amount of Group "+"\""+ $LowBaseName+ "\" does NOT match \n") waittext;
+                                         button -l "Close" -c "deleteUI batchBakeCheckWin;"-w 50 -h 30 -bgc 0.3 0.3 0.3 waitButton;
+                                         formLayout -e
+                                                    -af waittext    top     5
+                                                    -af waittext    left    5
+                                                    -af waittext    right   5 
+                                                
+                                                    -ac waitButton  top     5 waittext
+                                                    -af waitButton  left    40
+                                                    -af waitButton  right   40
+                                                    -af waitButton  bottom  10
+                                                waitform;
+                                window -e -w 200 -h 50  batchBakeCheckWin; 
+                                showWindow batchBakeCheckWin;       
+                          }
+                          else if ($shapes[$i] != $LowGEO[$i] ) // if amount matches but name does not match
+                          {
+                                 // pop up name does not match win
+                                 if (`window -q -exists batchBakeCheckWin`)
+                                 {deleteUI batchBakeCheckWin;}
+                       
+                                 window -t "Wait !" batchBakeCheckWin ;
+                                         formLayout waitform;
+                                         text   -l ("\n Name of Group "+"\""+ $LowBaseName+  "\" does NOT match \n") waittext;
+                                         button -l "Close" -c "deleteUI batchBakeCheckWin;"-w 50 -h 30 -bgc 0.3 0.3 0.3 waitButton;
+                                         formLayout -e
+                                                    -af waittext    top     5
+                                                    -af waittext    left    5
+                                                    -af waittext    right   5 
+                                                
+                                                    -ac waitButton  top     5 waittext
+                                                    -af waitButton  left    40
+                                                    -af waitButton  right   40
+                                                    -af waitButton  bottom  10
+                                                waitform;
+                                window -e -w 200 -h 50  batchBakeCheckWin; //reload window
+                                showWindow batchBakeCheckWin;       
+                           }
+                  }
+        }
+        
+        // -------------- bake proc --------------
+        global proc nt_diffuseBake()
+        {
+                string $newFolderPath = `textFieldButtonGrp -q -tx MyRenderPath`; // get textfield path
+                string $filename[] =`getFileList  -fld $newFolderPath  -fs "*.ma"`; // get all the file names in the folder
+                string $outputmap = `optionMenuGrp -q -v mapType` ; // get output map type
+                int $reso=`optionMenuGrp     -q  -v  res` ; // get resolution
+                
+                //------- set the super sampling as the option menu's sampling quality--------  
+                string $sampQ =`optionMenuGrp -q -v samplingQ` ;
+                int $superSampQ;
+                if ($sampQ == "Preview (1x1)")
+                $superSampQ = 0;
+                  
+                if ($sampQ == "Low (2x2)")
+                $superSampQ = 1;
+                          
+                if ($sampQ == "Medium (4x4)")
+                $superSampQ = 2;
+                              
+                if ($sampQ == "High (8x8)")
+                $superSampQ = 3;
+                        print $superSampQ;
+          
+                // ---- get "filter size": ----
+                float $filtersize =`floatSliderGrp  -q -v filtersizeslider`;
+                
+                // get "fill texture seams" as over scan
+                int $filltex = `textFieldGrp  -q -tx  filltexture`;
+             
+                // get "envelop" value
+                float $env =`floatSliderGrp  -q -v searchenv`;
+                 
+               //get files amount
+               int$sizeFileName=`size ($filename)`;
+               int $k;
+               
+              
+               for ($k=0;$k<$sizeFileName;$k++) // start with first file in the folder
+               {
+                   
+                   //Progress bar
+                   int $amount = $k;
+                     progressWindow  
+                         -title "Batch Rendering ..." 
+                         -progress $amount
+                         -status "rendered: 0"
+                         -max $sizeFileName
+                         -isInterruptable true;
+                pause -sec 1;
+                     
+                
+                         // Check if the dialog has been cancelled
+                         if ( `progressWindow -query -isCancelled` ) break;
+                
+                         // Check if end condition has been reached
+                         if ( `progressWindow -query -progress` >= $sizeFileName ) break;
+                
+                         //$amount += 1;
+                            progressWindow -edit
+                             -progress $amount
+                             -status ("rendered: "+$amount+"/"+$sizeFileName);
+                                                            
+                       //============================================                                         
+                       //open file
+                       file -f -options "v=0" -typ "mayaAscii" -o ($newFolderPath+$filename[$k]) ;
+                       //get all low group
+                       string $LowGRP[]=`ls ("*LowGRP")  `;
+                       int $sizeLowGRP=`size($LowGRP)`;
+                       int$i;
+                       for($i=0;$i<$sizeLowGRP;$i++)
+                       {  
+                               //get all low geo
+                               string $orgLowGEO[] =`listRelatives -c ($LowGRP[$i])`;
+                               string $LowGEO[]=`sort $orgLowGEO`; // get order
+                               $sizeLowGEO=size($LowGEO);
+                              
+                              
+                               //get low geo name
+                                       string $LowName = basename  ( $LowGRP[$i],"LowGRP") ;
+                                       //get high group
+                                       string $HighGRP = $LowName+"HighGRP";
+                                       //get high geo
+                                       string $orgshapes[]=`listRelatives -c $HighGRP`;
+                                       string $shapes[]=`sort $orgshapes`;
+                                       int$j;
+                                       for ($j=0;$j<$sizeLowGEO;$j++)
+                                       { 
+                                           //get low geo name
+                                           string $LowName = basename  ( $LowGRP[$i],"LowGRP") ;
+                                           //get high group
+                                           string $HighGRP = $LowName+"HighGRP";
+                                           //get high geo
+                                           string $orgshapes[]=`listRelatives -c $HighGRP`;
+                                           string $shapes[]=`sort $orgshapes`;
+                                           int $sizeShape = `size $shapes`;
+                                          
+                                           string $path = `file -query -sceneName`;
+                                           //remove file type
+                                           string $fileShortName= basename($filename[$k],".ma");
+                                           //ctreat new folder
+                                           string $dirname = (dirname($path)+ "/"+($fileShortName) + "_normalDiffuse");
+                                           sysFile -makeDir $dirname;
+                                           //bake
+                                           surfaceSampler -target ($LowGEO[$j]+"Shape") -uvSet map1 -searchOffset $env -maxSearchDistance 0 -searchCage ($LowGEO[$j]+"ShapeEnvelopeShape") -source ($shapes[$j])  
+                                                  //-mapOutput normal -mapWidth 256 -mapHeight 256 -max 1 -mapSpace tangent -mapMaterials 1 -shadows 1 -filename ($dirname + "/" + $LowGEO[$j] + "_normal" ) -fileFormat "tga" 
+                                                          -mapOutput diffuseRGB 
+                                                          -mapWidth $reso -mapHeight $reso 
+                                                          -max 1 -mapSpace tangent -mapMaterials 1 -shadows 1 
+                                                          // saving file named as path + low group short name + geo name + map type 
+                                                          -filename  ($dirname +"/"+ $LowName +"_"+ $LowGEO[$j] + "_disfuse" ) -fileFormat "tga" 
+                                                          -superSampling $superSampQ -filterType 0 -filterSize $filtersize -overscan $filltex 
+                                                          -searchMethod 0 -useGeometryNormals 0 -ignoreMirroredFaces 0 -flipU 0 -flipV 0 ;
+                                                  //shadingNode  -asTexture file;
+                                                  
+                                                  
+                                                   
+                                        }
+                            }
+                  }progressWindow -endProgress;//ending progress bar
+                  
+                  //pop up done win;
+                  window -t "Batch Rendering" batchRenderReportWin ;//create check window
+                
+                    formLayout waitform;
+                    
+                        text   -l "\n Done ! \n" waittext;
+                        button -l "Close" -c "deleteUI batchRenderReportWin;"-w 50 -h 30 -bgc 0.3 0.3 0.3 waitButton;
+                
+                    formLayout -e
+                               -af waittext    top     5
+                               -af waittext    left    5
+                               -af waittext    right   5 
+                                
+                               -ac waitButton  top     5 waittext
+                               -af waitButton  left    40
+                               -af waitButton  right   40
+                               -af waitButton  bottom  10
+                           waitform;
+                 window -e -w 200 -h 50  batchRenderReportWin; //reload window
+                 showWindow batchRenderReportWin;           
+        
+        
+        }
+ntBatchRender;
+
+}

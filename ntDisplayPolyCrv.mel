@@ -1,0 +1,13 @@
+/*
+ntDisplayPolyCrv v0.1 
+
+update -- 2017-05-16
+
+//directions:
+
+1.Only display polygon and curves in the scene
+
+*/
+
+modelEditor -e -allObjects 0 -polymeshes true -nurbsCurves  true modelPanel4;
+

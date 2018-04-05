@@ -1,0 +1,54 @@
+/*
+ntCreateCtrForObj v0.1 
+
+update -- 2016-10-11   
+
+//directions:
+*** for maya 2016
+1.any mesh CANNOT has keys on its channelBox
+2.in this case any change on modle will cause pivot's position change won't effect in Unity (although either way won't effect anyting in maya if used as refs  
+3.create ctr for obj
+4.this script is used to reinitialize model's transforms especially after it has been freezed transforms or has been layout in the scene
+5.!ctrs will use current pivot's position BETTER set the pivot right ( mostly we use center pivot )
+*/
+
+global proc ntCreateCtrForObj()
+{//..prevent redeclaration of var error
+	string $objs[] = `ls  -sl`;//..put selection in var
+	if(`objExists "crvLoc"`)
+	{delete crvLoc;}
+	//..creave a preset ctr
+	curve -d 1 -p 8 0 -1 -p 9 0 0 -p 8 0 1 -p 9 0 0 -p -9 0 0 -p 0 0 0 -p 0 0 -9 -p 0 0 9 -p -1 0 8 -p 0 1 8 -p 1 0 8 -p 0 0 9 -p 0 1 8 -p 0 0 9 -p 0 0 0 -p 0 9 0 -p -1 8 0 -p 1 8 0 -p 0 9 0 -p 0 -9 0 -k 0 -k 1 -k 2 -k 3 -k 4 -k 5 -k 6 -k 7 -k 8 -k 9 -k 10 -k 11 -k 12 -k 13 -k 14 -k 15 -k 16 -k 17 -k 18 -k 19  -n crvLoc;
+	for ($obj in $objs)//..loop through selection
+	{
+	    //..get some value
+	    $topParent = `rootOf $obj`;//get top parent of obj; later we will put final ctr under it
+	    print $topParent;
+	    $objTrans = `xform -q -ws -rp $obj`;//get obj translate value
+	    print $objTrans;
+	    $objRotate = `xform -q -ws -rt $obj`;//get obj rotate value
+	    print $objRotate;
+	    //..create temp ctr to hold transform value and duplicate it as final ctr (as the parent of obj
+		$tmpCrvLoc =`duplicate -ilf -n ($obj+"_tmp") crvLoc`;//duplicate instance ctr use as temp locator
+		move  -ws -rpr $objTrans[0] $objTrans[1] $objTrans[2] $tmpCrvLoc;//move temp locator to where obj is
+		xform -ws -ro $objRotate[0] $objRotate[1] $objRotate[2] $tmpCrvLoc;//set temp locator as obj's rotation value
+		$finalCrvLoc = `duplicate  -n ($obj+"_ctr") $tmpCrvLoc`;//duplicate temp locator as final ctr (alrady at right spot
+		if ($topParent!=("|"+$obj))
+		{parent $finalCrvLoc $topParent;}//..parent final ctr to the hierarchy obj is in 
+		//..clean obj transform value
+		parent $obj $tmpCrvLoc;//..parent obj to temp locator
+		xform   -ws -t 0 0 0 $tmpCrvLoc;//move temp locator to 0 0 0
+		xform -ws -ro 0 0 0 $tmpCrvLoc;//set temp locator rotation value to 0 0 0
+		parent -w $obj;//..unparent obj to the world so obj is at 0 0 0 but with transform value
+		makeIdentity -apply true -t 1 -r 1 -s 1 -n 0 -pn 1 $obj;//..freeze transform of obj so obj is initialized
+		parent $obj $finalCrvLoc;//..parent obj to final ctr (still at 0 0 0)
+		xform -t  0 0 0 $obj;//set obj translate to 0 0 0 
+		xform  -ro 0 0 0 $obj;//set obj rotate to 0 0 0
+		//..clean unneeded
+		delete $tmpCrvLoc;
+		makeIdentity -apply true -t 1 -r 1 -s 1 -n 0 -pn 1 $finalCrvLoc;
+		
+	}
+	delete crvLoc;
+	select -cl  ;
+}ntCreateCtrForObj;
