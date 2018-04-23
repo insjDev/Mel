@@ -20,9 +20,9 @@
     window -t "ntAddAtlasUI"  $win ;
            frameLayout -lv 0 mainframe ;
                 separator;
-                textFieldGrp -l" driver"      -tx "*_ctr" -cw2 60 120 -cl2 "left" "right" driver;
+                textFieldGrp -l" driver"      -tx "ctr" -cw2 60 120 -cl2 "left" "right" driver;
                 textFieldGrp -l" driver attr" -tx "atlas"    -cw2 60 120 -cl2 "left" "right" driverAttr;
-                intSliderGrp -l" driver max"  -field on -v 10 -min 1 -max 50 -cw3 60 20 100 -cl3 "left" "left""right" maxInt;
+                intSliderGrp -l" driver max"  -field on -v 5 -min 1 -max 50 -cw3 60 20 100 -cl3 "left" "left""right" maxInt;
                 intSliderGrp -l" start at"    -field on -v 1  -min 0 -max 20 -cw3 60 20 100 -cl3 "left" "left""right" startInt;
                 button  -l "Add" -c "ntAddAtlas";
     window -e -w 250 -h 80 $win ;
@@ -68,5 +68,16 @@ global proc ntAddAtlas()
             	-value ($value)
             	($drivens[$j]); 
         }
+    }
+    //clear visibility keys of shape node 
+    int $m;
+    string $drivenShape[];
+    for($m;$m<$drivensSize;$m++)
+    {
+        $drivenShape=`listRelatives -s $drivens[$m]`;
+        print $drivenShape;
+        cutKey -clear -time ":" -float ":" -hierarchy none -controlPoints 0 -shape 1 {$drivenShape[0]+".visibility"};
+        select $drivenShape[0];
+        showHidden ; 
     }
 } 
