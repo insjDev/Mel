@@ -1,14 +1,16 @@
 /*
-    ntAddAtlas v0.1
+    ntAddAtlas v0.2
     update:    2018-04-05
+               2018-04-23 clear visibility keys of the shape node
     instructions:
     //1.put your controller name in the "driver"
     //2.put your attribute name in the "driver attr"
     //3.set your attribute max value 
-    //4."start at" is the number you want to start with set driven key , normally match to the naming of the mesh
+    //4."start at" is the value you want to start with the "set driven key" , normally match to the suffix number of the mesh name
     //5.select all the driven meshes by order!
     //6.run the script
-    notice:    value 0 is to turn off all atlas visibilities,so "start at" is default set to 1
+    notice:    value 0 is to turn off all atlas visibilities,
+               so "start at" default value is set to 1
 
 */
 
