@@ -1,7 +1,8 @@
 /*
-    ntAddAtlas v0.2
+    ntAddAtlas v0.3
     update:    2018-04-05
                2018-04-23 clear visibility keys of the shape node
+               2018-04-28 check if there are shape node keys to delete (joints don't have shape node)
     instructions:
     //1.put your controller name in the "driver"
     //2.put your attribute name in the "driver attr"
@@ -77,9 +78,11 @@ global proc ntAddAtlas()
     for($m;$m<$drivensSize;$m++)
     {
         $drivenShape=`listRelatives -s $drivens[$m]`;
-        print $drivenShape;
+        if(`objExists $drivenShape[0]`)
+        {
         cutKey -clear -time ":" -float ":" -hierarchy none -controlPoints 0 -shape 1 {$drivenShape[0]+".visibility"};
         select $drivenShape[0];
         showHidden ; 
+        }
     }
 } 
