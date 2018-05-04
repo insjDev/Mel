@@ -1,0 +1,34 @@
+/*
+    ntAddChildLoc v0.1
+    //add child locator at the same position to each selection
+    update 2018-05-04 
+
+*/
+global proc ntAddChildLoc()
+{   
+    string $sels[] =`ls -l -sl`;
+    int $m;
+    for ($m = 0;$m<`size $sels`;$m++)
+    {
+         //--get selection short name
+         string $buffer[] ;
+         string $locNameParent[];
+         $sizeBuf = `tokenize $sels[$m] "|" $buffer` ;
+         $shortName = $buffer[$sizeBuf-1];
+         $locName = $shortName+"_pos";
+         //--
+         if(!`objExists $locName`)
+         {
+             spaceLocator -n $locName -p 0 0 0;//create locactor
+         }
+         $selPos = `xform  -q -ws -t $shortName`;//get selection position
+         move -ws $selPos[0] $selPos[1] $selPos[2] ($shortName+"_pos");//move locator to selection position
+         $locNameParent = `listRelatives -p $locName`;
+         if(!`objExists $locNameParent[0]`||$locNameParent[0]!=$sels[$m])
+         {
+             parent ($shortName+"_pos") $sels[$m];//parent locator to selection
+         }
+         
+         
+    }
+}
