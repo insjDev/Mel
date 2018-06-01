@@ -1,0 +1,28 @@
+global proc ntPlanarUv()
+{
+    string $uvString ;
+    $meshList=`ls -sl`;
+    for($mesh in $meshList)
+    {
+        select $mesh;
+        $allUvs=`polyUVSet -q -auv`;
+
+        if (`size $allUvs`>1)
+        {
+            for ($i=1;$i<`size $allUvs`;$i++)
+            {
+                polyUVSet -delete -uvSet $allUvs[$i];
+            }
+        }else
+        {}
+        select ($mesh+".f[*]");
+        string $faces[] =` filterExpand -sm 34 -expand true`;
+        float $faceCount = size($faces)-1;
+        $uvString += ($mesh+".f[0:"+$faceCount+"] ");
+       
+    }
+    select $meshList;
+    ConvertSelectionToFaces; 
+    eval polyProjection -ch 1 -type Planar -ibd on -cm on -uvSetName map2 -kir  -md z $uvString ;
+    
+}ntPlanarUv;
